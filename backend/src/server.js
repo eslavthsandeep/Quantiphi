@@ -68,10 +68,7 @@ function gracefulShutdown(signal) {
  * Bootstrap the application.
  */
 async function bootstrap() {
-  // Attempt DB connection (non-blocking on failure)
-  await connectMongoDB();
-
-  // Start HTTP server
+  // Start HTTP server immediately so health checks and requests are accepted
   server = app.listen(env.PORT, () => {
     logger.info(`[Server] Running on port ${env.PORT} in ${env.NODE_ENV} mode`);
     logger.info(`[Server] LLM provider: ${env.LLM_PROVIDER}`);
@@ -85,6 +82,11 @@ async function bootstrap() {
       logger.error('[Server] Server error:', err.message);
     }
     process.exit(1);
+  });
+
+  // Attempt DB connection in background with retries
+  connectMongoDB().catch((err) => {
+    logger.warn('[DB] MongoDB initialization warning:', err.message);
   });
 
   // Handle uncaught exceptions and promise rejections
